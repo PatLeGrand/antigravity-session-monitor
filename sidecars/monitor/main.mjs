@@ -388,14 +388,20 @@ function evalInTarget(wsUrl, expression) {
     const finish = (v) => {
       if (done) return; done = true; clearTimeout(t);
       try { if (ws && ws.readyState === WebSocket.OPEN) ws.close(); } catch { /* ignore */ }
-      resolve(v);
+      resolve(v === false ? { ok: false, value: undefined } : v);
     };
     const t = setTimeout(() => finish(false), 2000);
     try {
       ws = new WebSocket(wsUrl);
       ws.onopen = () => ws.send(JSON.stringify({ id: 1, method: 'Runtime.evaluate', params: { expression } }));
       ws.onmessage = (e) => {
-        try { if (JSON.parse(e.data).id === 1) finish(true); } catch { finish(false); }
+        try {
+          const result = JSON.parse(e.data);
+          if (result.id === 1) finish({
+            ok: !result.error && !!result.result && !result.result.exceptionDetails,
+            value: result.result?.result?.value,
+          });
+        } catch { finish(false); }
       };
       ws.onerror = () => finish(false);
       ws.onclose = () => finish(false);
@@ -413,11 +419,15 @@ async function pollCdp() {
     const targets = await res.json();
     const live = new Set();
     for (const t of targets) {
-      if (t.type !== 'page' || !t.webSocketDebuggerUrl || String(t.url || '').startsWith('devtools://')) continue;
+      if (t.type !== 'page' || !t.webSocketDebuggerUrl || !/^https?:\/\//i.test(String(t.url || ''))) continue;
       live.add(t.id);
-      if (injected.has(t.id)) continue;
+      if (injected.has(t.id)) {
+        const { ok, value } = await evalInTarget(t.webSocketDebuggerUrl, 'Boolean(window.__SM_PORT__)');
+        if (!ok || value) continue;
+        injected.delete(t.id);
+      }
       const script = readFileSync(join(__dirname, 'client.js'), 'utf-8');
-      const ok = await evalInTarget(t.webSocketDebuggerUrl, `window.__SM_PORT__=${SIDECAR_PORT};\n${script}`);
+      const { ok } = await evalInTarget(t.webSocketDebuggerUrl, `window.__SM_PORT__=${SIDECAR_PORT};\n${script}`);
       if (ok) injected.add(t.id);
     }
     for (const id of injected) if (!live.has(id)) injected.delete(id);
@@ -434,7 +444,7 @@ async function toggleLeftViaCdp() {
     let hit = false;
     for (const t of targets) {
       if (t.type !== 'page' || !t.webSocketDebuggerUrl || String(t.url || '').startsWith('devtools://')) continue;
-      const ok = await evalInTarget(t.webSocketDebuggerUrl, 'window.__SM_TOGGLE_LEFT__ && window.__SM_TOGGLE_LEFT__(true)');
+      const { ok } = await evalInTarget(t.webSocketDebuggerUrl, 'window.__SM_TOGGLE_LEFT__ && window.__SM_TOGGLE_LEFT__(true)');
       if (ok) hit = true;
     }
     return hit;
