@@ -15,6 +15,7 @@ import { homedir } from 'node:os';
 import { basename, dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { SidecarApp, Response } from 'sidecar_sdk';
+import { discoverNayCalls, readNayNodes } from './nay.mjs';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const ID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -308,6 +309,7 @@ function summarize(appData, conv) {
     tools: [...tools.values()].sort((a, b) => b.count - a.count),
     recent: recent.slice(-RECENT_TOOLS).reverse(),
     subs: [...subs.entries()].map(([id, m]) => ({ id, ...m, killed: killed.has(id) })),
+    nayRefs: discoverNayCalls(steps),
   };
   if (cache.size > 300) cache.clear();
   cache.set(path, { key, sum });
@@ -326,7 +328,7 @@ function downsample(arr, n) {
 
 function subTree(appData, sum, depth, seen) {
   if (!sum || depth > MAX_DEPTH) return [];
-  return sum.subs.map((s) => {
+  const native = sum.subs.map((s) => {
     if (seen.has(s.id)) return null;
     seen.add(s.id);
     const a = existsSync(transcriptPath(appData, s.id)) ? appData : locate(s.id);
@@ -350,6 +352,12 @@ function subTree(appData, sum, depth, seen) {
       children: c && a ? subTree(a, c, depth + 1, seen) : [],
     };
   }).filter(Boolean);
+  const nay = readNayNodes(sum.nayRefs, { staleMs: STALE_MS }).filter((node) => {
+    if (seen.has(node.id)) return false;
+    seen.add(node.id);
+    return true;
+  });
+  return [...native, ...nay];
 }
 
 function flatten(tree, out = []) {
@@ -453,11 +461,11 @@ app.api('/api/session', (data) => {
   if (!sum) return new Response(JSON.stringify({ conversationId: conv, found: false }), { contentType: 'application/json', headers: CORS });
   const tree = subTree(appData, sum, 1, new Set([conv]));
   const flat = flatten(tree);
-  const etag = [sum.mtime, ...flat.map((n) => `${n.id}:${n.state}:${n.steps}`)].join('|');
+  const etag = [sum.mtime, ...flat.map((n) => `${n.id}:${n.state}:${n.steps}:${n.lastAt}:${n.context}:${n.activity}`)].join('|');
   const body = data.etag && data.etag === etag
     ? { conversationId: conv, found: true, unchanged: true, etag }
     : (() => {
-        const { subs, ...rest } = sum;
+        const { subs, nayRefs, ...rest } = sum;
         return {
           conversationId: conv,
           found: true,
