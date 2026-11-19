@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Session Monitor</title>
+  <script src="/preload.js"></script>
+  <link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+  <div id="empty" class="empty hidden">
+    <div class="empty-title">Aucune session détectée</div>
+    <div class="empty-sub" id="empty-sub">Ouvre ce panneau depuis une conversation.</div>
+  </div>
+
+  <main id="main" class="hidden">
+    <header class="top">
+      <div class="state"><span id="state-dot" class="dot"></span><span id="state-label">—</span></div>
+      <div class="spacer"></div>
+      <button id="open-left" class="left-btn" title="Ouvrir le moniteur à gauche en plus grand">◧ Ouvrir à gauche</button>
+      <span id="live" class="live" title="Mise à jour automatique">● Live</span>
+    </header>
+
+    <!-- Context -->
+    <section class="card">
+      <div class="card-head">
+        <h2>Contexte</h2>
+        <label class="limit">Limite
+          <select id="limit">
+            <option value="128000">128k</option>
+            <option value="200000">200k</option>
+            <option value="400000">400k</option>
+            <option value="1000000">1M</option>
+            <option value="2000000">2M</option>
+          </select>
+        </label>
+      </div>
+      <div class="ctx-big"><span id="ctx-now">0</span><span class="ctx-of"> / <span id="ctx-limit">200k</span> tokens</span><span id="ctx-pct" class="pct">0%</span></div>
+      <div class="bar"><div id="ctx-bar" class="bar-fill"></div></div>
+      <svg id="spark" class="spark" viewBox="0 0 300 48" preserveAspectRatio="none"></svg>
+      <div class="kv">
+        <div><span>Pic</span><b id="ctx-peak">0</b></div>
+        <div><span>Appels modèle</span><b id="calls">0</b></div>
+        <div><span>Tokens générés</span><b id="out">0</b></div>
+        <div><span>Coût estimé</span><b id="cost">0,00$</b></div>
+      </div>
+    </section>
+
+    <!-- Subagents -->
+    <section class="card">
+      <div class="card-head">
+        <h2>Sous-agents</h2>
+        <span id="sub-badge" class="badge">0</span>
+      </div>
+      <div id="subs" class="subs"></div>
+    </section>
+
+    <!-- Files -->
+    <section class="card">
+      <div class="card-head">
+        <h2>Fichiers</h2>
+        <span id="files-badge" class="badge">0</span>
+      </div>
+      <div id="files" class="files"></div>
+    </section>
+
+    <!-- Tools -->
+    <section class="card">
+      <div class="card-head">
+        <h2>Outils</h2>
+        <div class="tabs">
+          <button class="tab active" data-tab="tools-recent">Activité</button>
+          <button class="tab" data-tab="tools-agg">Totaux</button>
+        </div>
+      </div>
+      <div id="tools-recent" class="recent"></div>
+      <div id="tools-agg" class="tools hidden"></div>
+    </section>
+  </main>
+
+  <script src="/app.js"></script>
+</body>
+</html>

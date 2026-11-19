@@ -1,0 +1,12 @@
+{
+  "name": "session-monitor",
+  "displayName": "Session Monitor",
+  "description": "Panneau latéral live pour la session courante : taille du contexte (tokens), outils utilisés et sous-agents actifs.",
+  "version": "1.0.0",
+  "logo": "assets/logo.svg",
+  "suggestedPrompts": [
+    "Ouvre le Session Monitor",
+    "Quelle est la taille de mon contexte actuel ?",
+    "Est-ce que des sous-agents travaillent encore ?"
+  ]
+}

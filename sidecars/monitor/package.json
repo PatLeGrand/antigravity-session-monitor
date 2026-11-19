@@ -1,0 +1,6 @@
+{
+  "name": "session_monitor",
+  "version": "1.0.0",
+  "type": "module",
+  "description": "Session Monitor sidecar"
+}
